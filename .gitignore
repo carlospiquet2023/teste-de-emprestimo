@@ -1,0 +1,8 @@
+# Arquivos de configuração com chaves sensíveis
+config.js
+
+# Outros arquivos comuns a ignorar
+*.log
+node_modules/
+.env
+.DS_Store

@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor Financeiro de Empréstimos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Biblioteca para Exportar Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Bibliotecas PDF e ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .score-badge {
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .score-badge:hover {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col justify-between shadow-xl z-20">
+        <div class="overflow-y-auto">
+            <div class="p-6 flex items-center gap-3 border-b border-slate-700">
+                <i data-lucide="wallet" class="text-emerald-400 w-8 h-8"></i>
+                <h1 class="text-xl font-bold tracking-tight">CrediGestor</h1>
+            </div>
+            
+            <nav class="mt-6 px-2 space-y-1">
+                <button onclick="router('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors bg-emerald-600 text-white">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    Dashboard
+                </button>
+                <button onclick="router('clientes')" id="nav-clientes" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    Clientes
+                </button>
+                
+                <button onclick="router('extratos')" id="nav-extratos" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i data-lucide="file-text" class="w-5 h-5 text-purple-400"></i>
+                    Extratos
+                </button>
+
+                <!-- Botão de Nuvem (NOVO) -->
+                <button onclick="abrirModalNuvem()" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-blue-300 hover:bg-blue-900 hover:text-white transition-colors mt-2 border border-blue-900/50 bg-blue-900/20">
+                    <i data-lucide="cloud" class="w-5 h-5 text-blue-400"></i>
+                    Nuvem / Sync
+                </button>
+
+                <!-- Seção Carteira Separada -->
+                <div class="pt-4 pb-2 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Carteira
+                </div>
+
+                <button onclick="router('em_aberto')" id="nav-em_aberto" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i data-lucide="clock" class="w-5 h-5 text-blue-400"></i>
+                    Em Aberto
+                </button>
+                
+                <button onclick="router('inadimplentes')" id="nav-inadimplentes" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i data-lucide="alert-triangle" class="w-5 h-5 text-red-400"></i>
+                    Inadimplentes
+                </button>
+
+                <button onclick="router('finalizados')" id="nav-finalizados" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
+                    Finalizados
+                </button>
+            </nav>
+        </div>
+        
+        <!-- Footer Sidebar -->
+        <div class="p-4 border-t border-slate-700 bg-slate-900">
+            <!-- Botão Fechamento ZIP -->
+            <button onclick="baixarFechamentoDia()" class="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded transition-colors border border-purple-500 shadow-lg">
+                <i data-lucide="archive" class="w-3 h-3"></i> Fechamento do Dia (ZIP)
+            </button>
+
+            <!-- Botão Excel -->
+            <button onclick="exportToExcel()" class="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 text-xs font-medium text-emerald-300 bg-slate-800 hover:bg-slate-700 rounded transition-colors border border-slate-700">
+                <i data-lucide="file-spreadsheet" class="w-3 h-3"></i> Exportar Excel
+            </button>
+            <!-- Botão Backup JSON -->
+            <button onclick="exportData()" class="w-full flex items-center justify-center gap-2 px-3 py-2 mb-3 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded transition-colors border border-slate-700">
+                <i data-lucide="download" class="w-3 h-3"></i> Backup Dados
+            </button>
+            <p class="text-xs text-slate-500 text-center">Versão Cloud 3.1</p>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- Top Bar -->
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 md:px-8 flex-shrink-0">
+            <h2 id="page-title" class="text-lg font-semibold text-gray-700">Visão Geral</h2>
+            <div class="flex items-center gap-4">
+                <button onclick="resetData()" class="text-xs text-red-500 hover:underline" title="Apagar todos os dados">Resetar Sistema</button>
+                <div class="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold border border-emerald-200">
+                    A
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Content Container -->
+        <div id="app-content" class="flex-1 overflow-auto p-6 md:p-8 relative">
+            <!-- Content injected via JS -->
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-6 py-4 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+            <i data-lucide="check-circle" class="text-green-400"></i>
+            <span id="toast-message">Operação realizada!</span>
+        </div>
+    </main>
+
+    <!-- MODAL: NUVEM (NOVO) -->
+    <dialog id="modal-nuvem" class="rounded-xl shadow-2xl p-0 backdrop:bg-gray-900/50 w-full max-w-md">
+        <div class="bg-white p-6">
+            <div class="flex justify-between items-center mb-4 border-b pb-4">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-blue-700">
+                    <i data-lucide="cloud" class="w-5 h-5"></i> Sincronização na Nuvem
+                </h3>
+                <button onclick="closeModal('modal-nuvem')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+            </div>
+
+            <div id="cloud-status-area" class="mb-4 p-3 bg-gray-50 rounded border text-sm text-center">
+                Verificando conexão...
+            </div>
+
+            <!-- Area: Não Conectado -->
+            <div id="cloud-setup" class="hidden space-y-4">
+                <p class="text-sm text-gray-600">Para salvar seus dados na nuvem e acessar de qualquer lugar, você precisa criar um "Banco" ou conectar um existente.</p>
+                
+                <button onclick="criarBancoNuvem()" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-bold shadow-sm flex justify-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4 mt-0.5"></i> Criar Novo Banco (Primeira vez)
+                </button>
+                
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-gray-300"></div>
+                    <span class="flex-shrink-0 mx-4 text-gray-400 text-xs">OU CONECTAR</span>
+                    <div class="flex-grow border-t border-gray-300"></div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Já tenho um ID do Banco:</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="input-bin-id" placeholder="Ex: 673b..." class="flex-1 border rounded p-2 text-sm">
+                        <button onclick="conectarBancoExistente()" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm font-bold">Conectar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Area: Conectado -->
+            <div id="cloud-actions" class="hidden space-y-4">
+                <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-3">
+                    <p class="text-xs text-blue-600 font-bold mb-1">SEU ID (Salve isso para acessar em outro PC):</p>
+                    <p id="display-bin-id" class="font-mono text-sm break-all select-all bg-white p-1 rounded border border-blue-100 cursor-pointer" onclick="copiarID()">...</p>
+                    <p class="text-[10px] text-blue-400 mt-1">*Clique no ID para copiar</p>
+                </div>
+
+                <!-- INDICADOR DE ÚLTIMO ENVIO -->
+                <div class="text-center mb-4 bg-gray-50 p-2 rounded border border-gray-200">
+                    <span class="text-xs text-gray-500 uppercase font-bold block mb-1">Último envio para nuvem</span>
+                    <span id="cloud-last-save" class="text-sm font-bold text-emerald-600">-</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="salvarNaNuvem()" class="bg-emerald-600 text-white py-3 rounded-lg hover:bg-emerald-700 flex flex-col items-center gap-1 shadow-sm">
+                        <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                        <span class="text-xs font-bold">ENVIAR (SALVAR)</span>
+                    </button>
+                    <button onclick="baixarDaNuvem()" class="bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 flex flex-col items-center gap-1 shadow-sm">
+                        <i data-lucide="download-cloud" class="w-5 h-5"></i>
+                        <span class="text-xs font-bold">BAIXAR (RESTAURAR)</span>
+                    </button>
+                </div>
+                <p class="text-[10px] text-gray-400 text-center mt-2">
+                    Enviar: Substitui a nuvem com os dados daqui.<br>
+                    Baixar: Substitui os dados daqui com os da nuvem.
+                </p>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- MODAL: Novo Cliente -->
+    <dialog id="modal-cliente" class="rounded-xl shadow-2xl p-0 backdrop:bg-gray-900/50 w-full max-w-lg">
+        <div class="bg-white p-6 h-auto max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Cadastro de Cliente</h3>
+                <button onclick="closeModal('modal-cliente')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+            </div>
+            <form onsubmit="handleNewCustomer(event)" class="space-y-4">
+                <!-- Dados Pessoais -->
+                <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <p class="text-xs font-bold text-gray-500 uppercase mb-2">Dados Pessoais</p>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+                            <input type="text" id="cliente-nome" required class="w-full rounded-lg border-gray-300 border p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">CPF / CNPJ</label>
+                                <input type="text" id="cliente-cpf" class="w-full rounded-lg border-gray-300 border p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="000.000.000-00">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Telefone / WhatsApp</label>
+                                <input type="text" id="cliente-tel" required class="w-full rounded-lg border-gray-300 border p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email (Opcional)</label>
+                            <input type="email" id="cliente-email" class="w-full rounded-lg border-gray-300 border p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dados Financeiros -->
+                <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <p class="text-xs font-bold text-gray-500 uppercase mb-2">Dados Financeiros & Controle</p>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Limite Crédito (R$)</label>
+                            <input type="number" id="cliente-limite" step="0.01" required class="w-full rounded-lg border-gray-300 border p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Vencimento Preferencial</label>
+                            <select id="cliente-dia-venc" class="w-full rounded-lg border-gray-300 border p-2 text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <option value="">Não definido</option>
+                                <option value="5">Dia 05</option>
+                                <option value="10">Dia 10</option>
+                                <option value="15">Dia 15</option>
+                                <option value="20">Dia 20</option>
+                                <option value="25">Dia 25</option>
+                                <option value="30">Dia 30</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                         <label class="block text-sm font-medium text-gray-700 mb-1">Regra do Limite</label>
+                         <select id="cliente-tipo-limite" class="w-full rounded-lg border-gray-300 border p-2 text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            <option value="total" selected>Comprometer com Juros (Padrão)</option>
+                            <option value="principal">Comprometer Apenas Principal</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                        <textarea id="cliente-obs" rows="2" class="w-full rounded-lg border-gray-300 border p-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Ex: Cliente bom pagador, não ligar de manhã..."></textarea>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('modal-cliente')" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Salvar Cadastro</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <!-- MODAL: Novo Empréstimo -->
+    <dialog id="modal-emprestimo" class="rounded-xl shadow-2xl p-0 backdrop:bg-gray-900/50 w-full max-w-lg">
+        <div class="bg-white p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold flex items-center gap-2"><i data-lucide="banknote" class="text-emerald-600"></i> Novo Empréstimo</h3>
+                <button onclick="closeModal('modal-emprestimo')" class="text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div id="aviso-limite" class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm mb-4 hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="font-bold block mb-1">Status do Limite:</span>
+                        <span id="val-disponivel">R$ 0,00</span>
+                    </div>
+                    <button id="btn-override" onclick="showOverrideInput()" class="hidden bg-red-100 text-red-700 border border-red-200 px-3 py-1 rounded text-xs font-bold hover:bg-red-200 transition-colors">
+                        Liberar Limite Extra
+                    </button>
+                </div>
+                <div id="div-override-input" class="hidden mt-3 pt-3 border-t border-red-200">
+                    <label class="block text-xs font-bold text-red-700 mb-1">Autorizado por (Nome do Gestor):</label>
+                    <input type="text" id="auth-gestor" class="w-full rounded border-red-300 border p-1.5 text-sm focus:ring-1 focus:ring-red-500 focus:outline-none" placeholder="Digite quem liberou..." oninput="checkOverrideAuth()">
+                </div>
+            </div>
+
+            <form onsubmit="handleNewLoan(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                    <select id="emp-cliente" required onchange="checkLimitInfo()" class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                        <option value="">Selecione...</option>
+                    </select>
+                    <p id="modal-score-display" class="text-xs mt-1 hidden"></p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Valor Emprestado (R$)</label>
+                        <input type="number" id="emp-valor" step="0.01" required oninput="calcularSimulacao()" class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                        <select id="emp-tipo" onchange="toggleParcelas()" class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                            <option value="avulso">Avulso</option>
+                            <option value="parcelado">Parcelado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Juros Total (%)</label>
+                        <input type="number" id="emp-juros" step="0.1" value="0" required oninput="calcularSimulacao()" class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-gray-50">
+                    </div>
+                    
+                    <div id="div-avulso-opcoes">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Prazo (Plano)</label>
+                        <select id="emp-prazo-avulso" onchange="aplicarPlanoAvulso()" class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
+                            <option value="20">20 Dias (20%)</option>
+                            <option value="30" selected>30 Dias (30%)</option>
+                        </select>
+                    </div>
+
+                    <div id="div-parcelas" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Qtd Parcelas</label>
+                        <input type="number" id="emp-qtd-parcelas" min="2" value="2" oninput="calcularSimulacao()" class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Data Início</label>
+                        <input type="date" id="emp-data" required onchange="calcularSimulacao()" class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Juros Diário Atraso (%)</label>
+                        <input type="number" id="emp-multa-diaria" step="0.1" value="1.0" class="w-full rounded-lg border-gray-300 border p-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none" title="Aplicado após 5 dias de atraso">
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
+                    <p class="text-xs font-bold text-gray-500 uppercase mb-2">Simulação</p>
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <p class="text-sm text-gray-600">Valor Final:</p>
+                            <p class="text-xl font-bold text-emerald-600" id="sim-total">R$ 0,00</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-600" id="sim-desc-parcela">Pagamento Único</p>
+                            <p class="text-lg font-bold text-gray-800" id="sim-valor-parcela">R$ 0,00</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2" id="sim-datas">Vencimento: -</p>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('modal-emprestimo')" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                    <button type="submit" id="btn-submit-emprestimo" class="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed">Confirmar Empréstimo</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <!-- MODAL: Pagamento / Detalhes -->
+    <dialog id="modal-pagamento" class="rounded-xl shadow-2xl p-0 backdrop:bg-gray-900/50 w-full max-w-2xl">
+        <div class="bg-white p-0 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-start bg-slate-50">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800" id="det-cliente">Nome do Cliente</h3>
+                    <p class="text-sm text-gray-500" id="det-tipo">Tipo do Empréstimo</p>
+                    <div id="det-auth-info" class="hidden mt-1">
+                        <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold border border-red-200">
+                            <i data-lucide="shield-alert" class="w-3 h-3 inline mr-1"></i>
+                            Liberado por: <span id="det-auth-nome"></span>
+                        </span>
+                    </div>
+                </div>
+                <button onclick="closeModal('modal-pagamento')" class="text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 p-3 rounded-lg">
+                        <p class="text-xs text-blue-600 font-semibold">Valor Emprestado</p>
+                        <p class="font-bold text-gray-800" id="det-principal">R$ 0,00</p>
+                    </div>
+                    <div class="bg-emerald-50 p-3 rounded-lg">
+                        <p class="text-xs text-emerald-600 font-semibold">Valor Total (+Juros)</p>
+                        <p class="font-bold text-gray-800" id="det-total">R$ 0,00</p>
+                    </div>
+                    <div class="bg-orange-50 p-3 rounded-lg">
+                        <p class="text-xs text-orange-600 font-semibold">Restante</p>
+                        <p class="font-bold text-gray-800" id="det-restante">R$ 0,00</p>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded-lg">
+                        <p class="text-xs text-red-600 font-semibold">Multa (Prevista)</p>
+                        <p class="font-bold text-red-600" id="det-multa">R$ 0,00</p>
+                    </div>
+                </div>
+
+                <h4 class="font-bold text-gray-700 mb-3 flex justify-between items-center">
+                    Parcelas / Pagamentos
+                    <button id="btn-quitar" onclick="quitarTudo()" class="text-xs bg-emerald-600 text-white px-3 py-1 rounded hover:bg-emerald-700 hidden">Quitar Restante</button>
+                </h4>
+                <div class="border rounded-lg overflow-hidden">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-50 text-gray-500">
+                            <tr>
+                                <th class="px-4 py-3">#</th>
+                                <th class="px-4 py-3">Vencimento</th>
+                                <th class="px-4 py-3">Valor Base</th>
+                                <th class="px-4 py-3">Multa/Juros</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3 text-right">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-parcelas" class="divide-y divide-gray-100">
+                            <!-- JS popula aqui -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <script src="config.js"></script>
+    <script>
+        // --- CONFIGURAÇÃO DA NUVEM (JSONBin) ---
+        const CLOUD = CLOUD_CONFIG; // Carrega do config.js
+        const CLOUD_ID_KEY = 'crediGestor_bin_id'; // Localstorage key para o ID do Banco
+
+        // --- ESTADO & DADOS ---
+        const DB_KEY = 'sistema_fin_v3'; 
+        let state = {
+            clientes: [],
+            emprestimos: [],
+            transacoes: [],
+            lastSave: null // Novo campo para rastrear último envio
+        };
+        let currentLoanId = null; 
+
+        // --- INICIALIZAÇÃO ---
+        window.onload = () => {
+            loadData();
+            router('dashboard');
+            lucide.createIcons();
+            document.getElementById('emp-data').valueAsDate = new Date();
+        };
+
+        // --- PERSISTÊNCIA LOCAL ---
+        function loadData() {
+            const saved = localStorage.getItem(DB_KEY);
+            if (saved) {
+                state = JSON.parse(saved);
+                // Garantir campos
+                if (!state.transacoes) state.transacoes = [];
+                if (state.lastSave === undefined) state.lastSave = null;
+                state.clientes.forEach(c => {
+                    if (c.limite === undefined) c.limite = 2000;
+                    if (c.tipoLimite === undefined) c.tipoLimite = 'total'; 
+                    if (c.cpf === undefined) c.cpf = '';
+                    if (c.obs === undefined) c.obs = '';
+                    if (c.diaVencimento === undefined) c.diaVencimento = '';
+                    if (c.dataCadastro === undefined) c.dataCadastro = new Date().toISOString().split('T')[0];
+                    if (c.status === undefined) c.status = 'ativo';
+                    if (c.scoreManual === undefined) c.scoreManual = null;
+                    if (c.scoreGestor === undefined) c.scoreGestor = null;
+                });
+            } else {
+                state = { clientes: [], emprestimos: [], transacoes: [], lastSave: null };
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(DB_KEY, JSON.stringify(state));
+            updateUI();
+        }
+
+        // --- FUNÇÕES DA NUVEM ---
+        function abrirModalNuvem() {
+            const binId = localStorage.getItem(CLOUD_ID_KEY);
+            const statusArea = document.getElementById('cloud-status-area');
+            const setupArea = document.getElementById('cloud-setup');
+            const actionsArea = document.getElementById('cloud-actions');
+            const displayId = document.getElementById('display-bin-id');
+            const displayLastSave = document.getElementById('cloud-last-save');
+
+            document.getElementById('modal-nuvem').showModal();
+
+            if (binId) {
+                // Conectado
+                statusArea.innerHTML = `<span class="text-green-600 font-bold">● Conectado à Nuvem</span>`;
+                statusArea.className = "mb-4 p-3 bg-green-50 rounded border border-green-200 text-sm text-center";
+                setupArea.classList.add('hidden');
+                actionsArea.classList.remove('hidden');
+                displayId.innerText = binId;
+                
+                // Mostrar última data
+                if (state.lastSave) {
+                    const date = new Date(state.lastSave);
+                    displayLastSave.innerText = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    
+                    // Alerta visual se não for hoje
+                    const hoje = new Date().toLocaleDateString();
+                    if(date.toLocaleDateString() !== hoje) {
+                        displayLastSave.className = "text-sm font-bold text-red-500";
+                        displayLastSave.innerText += " (NÃO SALVO HOJE)";
+                    } else {
+                        displayLastSave.className = "text-sm font-bold text-emerald-600";
+                    }
+                } else {
+                    displayLastSave.innerText = "Nunca enviado.";
+                    displayLastSave.className = "text-sm font-bold text-gray-400";
+                }
+
+            } else {
+                // Desconectado
+                statusArea.innerHTML = `<span class="text-gray-500 font-bold">● Desconectado</span>`;
+                statusArea.className = "mb-4 p-3 bg-gray-50 rounded border text-sm text-center";
+                setupArea.classList.remove('hidden');
+                actionsArea.classList.add('hidden');
+            }
+        }
+
+        async function criarBancoNuvem() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = "Criando...";
+
+            // Marca data
+            state.lastSave = new Date().toISOString();
+            saveData();
+
+            try {
+                const response = await fetch(CLOUD.URL_BASE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': CLOUD.MASTER_KEY,
+                        'X-Access-Key': CLOUD.ACCESS_KEY,
+                        'X-Bin-Name': 'CrediGestor_Backup'
+                    },
+                    body: JSON.stringify(state)
+                });
+
+                if (!response.ok) throw new Error('Erro ao criar banco');
+                
+                const data = await response.json();
+                const newBinId = data.metadata.id;
+                
+                localStorage.setItem(CLOUD_ID_KEY, newBinId);
+                showToast("Banco na nuvem criado com sucesso!");
+                abrirModalNuvem(); // Atualiza modal
+            } catch (err) {
+                alert("Erro ao criar na nuvem: " + err.message);
+                state.lastSave = null; // Reverte se falhou
+                saveData();
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        function conectarBancoExistente() {
+            const input = document.getElementById('input-bin-id');
+            const id = input.value.trim();
+            if (!id) return alert("Digite um ID válido.");
+
+            // Simplesmente salva e tenta baixar para testar
+            localStorage.setItem(CLOUD_ID_KEY, id);
+            
+            // Tenta baixar para verificar se existe
+            baixarDaNuvem(true).then(success => {
+                if (success) {
+                    showToast("Conectado com sucesso!");
+                    abrirModalNuvem();
+                } else {
+                    localStorage.removeItem(CLOUD_ID_KEY);
+                    alert("ID inválido ou erro de acesso. Verifique o ID.");
+                }
+            });
+        }
+
+        async function salvarNaNuvem() {
+            const binId = localStorage.getItem(CLOUD_ID_KEY);
+            if (!binId) return alert("Erro: ID não encontrado.");
+
+            const statusArea = document.getElementById('cloud-status-area');
+            statusArea.innerText = "Enviando dados...";
+            
+            // Atualiza timestamp antes de enviar
+            state.lastSave = new Date().toISOString();
+            saveData(); // Salva localmente também
+
+            try {
+                const response = await fetch(`${CLOUD.URL_BASE}/${binId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': CLOUD.MASTER_KEY
+                    },
+                    body: JSON.stringify(state)
+                });
+
+                if (!response.ok) throw new Error('Erro no envio');
+
+                showToast("Dados salvos na nuvem com sucesso!");
+                statusArea.innerText = "Sincronização concluída!";
+            } catch (err) {
+                alert("Erro ao salvar: " + err.message);
+                statusArea.innerText = "Erro na sincronização.";
+            } finally {
+                setTimeout(() => abrirModalNuvem(), 2000);
+            }
+        }
+
+        async function baixarDaNuvem(isTest = false) {
+            const binId = localStorage.getItem(CLOUD_ID_KEY);
+            if (!binId) return false;
+
+            if (!isTest) {
+                const statusArea = document.getElementById('cloud-status-area');
+                statusArea.innerText = "Baixando dados...";
+            }
+
+            try {
+                const response = await fetch(`${CLOUD.URL_BASE}/${binId}/latest`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': CLOUD.MASTER_KEY
+                    }
+                });
+
+                if (!response.ok) throw new Error('Erro ao baixar');
+
+                const data = await response.json();
+                
+                // JSONBin v3 retorna o objeto dentro de record
+                state = data.record || data; 
+                saveData(); // Salva localmente
+                
+                if (!isTest) {
+                    showToast("Dados restaurados da nuvem!");
+                    location.reload(); // Recarrega para aplicar
+                }
+                return true;
+            } catch (err) {
+                if (!isTest) alert("Erro ao baixar: " + err.message);
+                return false;
+            }
+        }
+
+        function copiarID() {
+            const text = document.getElementById('display-bin-id').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("ID copiado para a área de transferência!");
+            });
+        }
+
+        function resetData() {
+            if(confirm("ATENÇÃO: Isso apagará TODOS os dados LOCAIS. A nuvem não será afetada a menos que você sincronize depois. Continuar?")) {
+                localStorage.removeItem(DB_KEY);
+                localStorage.removeItem(CLOUD_ID_KEY); // Remove conexão também
+                location.reload();
+            }
+        }
+
+
+        // --- NOVA FUNÇÃO: REGISTRAR TRANSAÇÃO ---
+        function registrarTransacao(contratoId, valor, tipo, detalhe) {
+            const emp = state.emprestimos.find(e => e.id === contratoId);
+            const cliente = state.clientes.find(c => c.id === emp.clienteId);
+            
+            const authCode = Math.random().toString(36).substring(2, 15).toUpperCase() + Date.now().toString(36).toUpperCase();
+
+            const novaTransacao = {
+                id: authCode,
+                data: new Date().toISOString(), 
+                timestamp: Date.now(),
+                contratoId: contratoId,
+                clienteNome: cliente ? cliente.nome : 'Cliente Removido',
+                clienteCpf: cliente ? cliente.cpf : '',
+                valor: valor,
+                tipo: tipo, 
+                detalhe: detalhe 
+            };
+
+            state.transacoes.push(novaTransacao);
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "backup_financeiro_" + new Date().toISOString().slice(0,10) + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function exportToExcel() {
+            if (!state.clientes.length) {
+                alert("Não há dados para exportar.");
+                return;
+            }
+            const clientesData = state.clientes.map(c => {
+                const score = calcularScore(c.id);
+                const emUso = getClientUsedCredit(c.id);
+                return {
+                    "ID": c.id,
+                    "Nome Completo": c.nome,
+                    "CPF/CNPJ": c.cpf || '-',
+                    "Telefone": c.telefone,
+                    "Email": c.email || '-',
+                    "Data Cadastro": formatDate(c.dataCadastro),
+                    "Status": c.status.toUpperCase(),
+                    "Score (0-1000)": score,
+                    "Manual": c.scoreManual ? 'Sim' : 'Não',
+                    "Gestor Score": c.scoreGestor || '-',
+                    "Limite (R$)": c.limite,
+                    "Em Uso (R$)": emUso,
+                    "Disponível (R$)": c.limite - emUso,
+                    "Dia Venc. Pref.": c.diaVencimento || '-',
+                    "Obs": c.obs || '-'
+                };
+            });
+            const emprestimosData = state.emprestimos.map(e => {
+                const c = state.clientes.find(cl => cl.id === e.clienteId);
+                return {
+                    "ID Contrato": e.id,
+                    "Cliente": c ? c.nome : 'Excluído',
+                    "Tipo": e.tipo,
+                    "Data Início": formatDate(e.dataInicio),
+                    "Valor Principal": e.valorOriginal,
+                    "Valor Total": e.valorTotal,
+                    "Status": e.statusGeral.toUpperCase(),
+                    "Parcelas Totais": e.parcelas.length,
+                    "Autorizado Por": e.liberadoPor || '-'
+                };
+            });
+            const wb = XLSX.utils.book_new();
+            const wsClientes = XLSX.utils.json_to_sheet(clientesData);
+            XLSX.utils.book_append_sheet(wb, wsClientes, "Lista de Clientes");
+            const wsEmprestimos = XLSX.utils.json_to_sheet(emprestimosData);
+            XLSX.utils.book_append_sheet(wb, wsEmprestimos, "Contratos");
+            const fileName = `Relatorio_CrediGestor_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            showToast("Relatório Excel gerado!");
+        }
+
+        // --- SCORE AUTOMÁTICO ---
+        function calcularScore(clienteId) {
+            const cliente = state.clientes.find(c => c.id === clienteId);
+            if (cliente && cliente.scoreManual) return parseInt(cliente.scoreManual);
+            let score = 500; 
+            let cleanStreak = 0; 
+            let isNegativado = false; 
+            let todasParcelas = [];
+            state.emprestimos.filter(e => e.clienteId === clienteId).forEach(emp => {
+                emp.parcelas.forEach(p => {
+                    todasParcelas.push({
+                        vencimento: new Date(p.vencimento),
+                        pagamento: p.dataPagamento ? new Date(p.dataPagamento) : null,
+                        status: p.status, 
+                        valor: p.valorBase,
+                        dataReferencia: p.dataPagamento ? new Date(p.dataPagamento) : new Date()
+                    });
+                });
+            });
+            todasParcelas.sort((a, b) => a.vencimento - b.vencimento);
+            if (todasParcelas.length === 0) return 500; 
+            todasParcelas.forEach(p => {
+                let diasAtraso = 0;
+                const v = new Date(p.vencimento).setHours(0,0,0,0);
+                const r = new Date(p.dataReferencia).setHours(0,0,0,0);
+                if (r > v) {
+                    diasAtraso = Math.ceil((r - v) / (1000 * 60 * 60 * 24));
+                }
+                if (diasAtraso > 5) {
+                    score -= 100; 
+                    isNegativado = true; 
+                    cleanStreak = 0; 
+                } 
+                else if (diasAtraso > 0) {
+                    score -= 20; 
+                    cleanStreak = 0; 
+                }
+                else if (p.status === 'pago') {
+                    cleanStreak++;
+                    if (isNegativado) {
+                        if (cleanStreak >= 10) {
+                            isNegativado = false; 
+                            score += 10; 
+                        } else {
+                            score += 1; 
+                        }
+                    } else {
+                        score += 15; 
+                    }
+                }
+            });
+            return Math.max(0, Math.min(1000, score));
+        }
+
+        function editScore(id) {
+            const cliente = state.clientes.find(c => c.id === id);
+            if (!cliente) return;
+            const atual = calcularScore(id);
+            if(confirm(`Score Atual Calculado: ${atual}\nDeseja definir um Score Manual fixo?`)) {
+                const novoScore = prompt("Digite o novo Score (0-1000):", atual);
+                if (novoScore !== null && !isNaN(novoScore)) {
+                    const gestor = prompt("Nome do Gestor responsável pela alteração:", "Admin");
+                    if (gestor) {
+                        cliente.scoreManual = Math.max(0, Math.min(1000, parseInt(novoScore)));
+                        cliente.scoreGestor = gestor;
+                        saveData();
+                        showToast("Score atualizado manualmente!");
+                    } else {
+                        alert("Nome do gestor é obrigatório.");
+                    }
+                }
+            } else if (cliente.scoreManual !== null) {
+                if(confirm("Deseja remover o Score Manual e voltar ao cálculo automático?")) {
+                    cliente.scoreManual = null;
+                    cliente.scoreGestor = null;
+                    saveData();
+                    showToast("Score voltou ao automático.");
+                }
+            }
+        }
+
+        function getScoreBadge(score, id) {
+            let colorClass = "";
+            let label = "";
+            if (score >= 800) {
+                colorClass = "bg-emerald-100 text-emerald-800 border border-emerald-200";
+                label = "Excelente";
+            } else if (score >= 600) {
+                colorClass = "bg-blue-100 text-blue-800 border border-blue-200";
+                label = "Bom";
+            } else if (score >= 400) {
+                colorClass = "bg-yellow-100 text-yellow-800 border border-yellow-200";
+                label = "Regular";
+            } else {
+                colorClass = "bg-red-100 text-red-800 border border-red-200";
+                label = "Risco Alto";
+            }
+            return `<div class="flex flex-col items-center" onclick="editScore(${id})" title="Clique para ajustar manualmente">
+                        <span class="text-xs font-bold text-gray-700">${score}</span>
+                        <span class="${colorClass} score-badge">${label}</span>
+                    </div>`;
+        }
+
+        // --- ROTEAMENTO ---
+        function router(view) {
+            const content = document.getElementById('app-content');
+            const title = document.getElementById('page-title');
+            
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.className = 'nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors';
+            });
+            
+            // Botão Nuvem especial
+            const btnNuvem = document.querySelector('button[onclick="abrirModalNuvem()"]');
+            if(btnNuvem) {
+                 btnNuvem.className = 'nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-blue-300 hover:bg-blue-900 hover:text-white transition-colors mt-2 border border-blue-900/50 bg-blue-900/20';
+            }
+
+            const navBtn = document.getElementById(`nav-${view}`);
+            if (navBtn) {
+                navBtn.className = 'nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors bg-emerald-600 text-white';
+            }
+
+            if (view === 'dashboard') {
+                title.innerText = 'Dashboard Financeiro';
+                renderDashboard(content);
+            } else if (view === 'clientes') {
+                title.innerText = 'Gestão de Clientes';
+                renderClientes(content);
+            } else if (view === 'extratos') {
+                title.innerText = 'Extratos & Histórico';
+                renderExtratos(content);
+            } else if (view === 'em_aberto') {
+                title.innerText = 'Empréstimos em Aberto';
+                renderFilteredLoans(content, 'em_aberto');
+            } else if (view === 'inadimplentes') {
+                title.innerText = 'Carteira Inadimplente';
+                renderFilteredLoans(content, 'inadimplentes');
+            } else if (view === 'finalizados') {
+                title.innerText = 'Contratos Finalizados';
+                renderFilteredLoans(content, 'finalizados');
+            }
+            lucide.createIcons();
+        }
+
+        function updateUI() {
+            const activeNav = document.querySelector('.nav-item.bg-emerald-600');
+            if(activeNav) router(activeNav.id.replace('nav-', ''));
+        }
+
+        // --- HELPERS FINANCEIROS ---
+        function formatMoney(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+
+        function addDays(date, days) {
+            const result = new Date(date);
+            result.setDate(result.getDate() + days);
+            return result;
+        }
+
+        function addMonths(date, months) {
+            const result = new Date(date);
+            result.setMonth(result.getMonth() + months);
+            return result;
+        }
+
+        function getStatus(vencimento, dataPagamento) {
+            if (dataPagamento) return { label: 'Pago', color: 'bg-green-100 text-green-700', code: 'pago' };
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
+            const venc = new Date(vencimento);
+            venc.setHours(0,0,0,0);
+            const diffTime = hoje - venc;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            if (diffDays > 5) return { label: 'Inadimplente', color: 'bg-red-100 text-red-700', code: 'inadimplente', diasAtraso: diffDays };
+            if (diffDays > 0) return { label: 'Atrasado', color: 'bg-orange-100 text-orange-700', code: 'atrasado', diasAtraso: diffDays };
+            return { label: 'Em dia', color: 'bg-blue-100 text-blue-700', code: 'em_dia' };
+        }
+
+        function getClientUsedCredit(clienteId) {
+            const cliente = state.clientes.find(c => c.id === clienteId);
+            const tipoLimite = cliente ? (cliente.tipoLimite || 'total') : 'total';
+            return state.emprestimos
+                .filter(e => e.clienteId === clienteId && e.statusGeral === 'ativo')
+                .reduce((total, emp) => {
+                    const pendente = emp.parcelas.filter(p => p.status === 'pendente')
+                                                .reduce((sum, p) => {
+                                                    if (tipoLimite === 'principal') {
+                                                        const principalParcela = p.valorBase / (1 + (emp.taxaJuros / 100));
+                                                        return sum + principalParcela;
+                                                    }
+                                                    return sum + p.valorBase;
+                                                }, 0);
+                    return total + pendente;
+                }, 0);
+        }
+
+        function calcularMulta(valorParcela, diasAtraso, taxaDiaria) {
+            if (diasAtraso <= 5) return 0; 
+            const diasParaCobrar = diasAtraso - 5;
+            return valorParcela * (taxaDiaria / 100) * diasParaCobrar;
+        }
+
+        // --- LÓGICA DO MODAL DE EMPRÉSTIMO & OVERRIDE ---
+        let limitExceeded = false;
+        function toggleParcelas() {
+            const tipo = document.getElementById('emp-tipo').value;
+            const divParcelas = document.getElementById('div-parcelas');
+            const divAvulso = document.getElementById('div-avulso-opcoes');
+            if (tipo === 'parcelado') {
+                divParcelas.classList.remove('hidden');
+                divAvulso.classList.add('hidden');
+            } else {
+                divParcelas.classList.add('hidden');
+                divAvulso.classList.remove('hidden');
+                aplicarPlanoAvulso(); 
+            }
+            calcularSimulacao();
+        }
+
+        function aplicarPlanoAvulso() {
+            const prazo = document.getElementById('emp-prazo-avulso').value;
+            const inputJuros = document.getElementById('emp-juros');
+            if (prazo === '20') {
+                inputJuros.value = 20;
+            } else {
+                inputJuros.value = 30;
+            }
+            calcularSimulacao();
+        }
+
+        function calcularSimulacao() {
+            const valor = parseFloat(document.getElementById('emp-valor').value) || 0;
+            const juros = parseFloat(document.getElementById('emp-juros').value) || 0;
+            const tipo = document.getElementById('emp-tipo').value;
+            const qtd = parseInt(document.getElementById('emp-qtd-parcelas').value) || 1;
+            const dataInicio = document.getElementById('emp-data').value;
+            const totalComJuros = valor + (valor * (juros / 100));
+            document.getElementById('sim-total').innerText = formatMoney(totalComJuros);
+            let descDatas = "";
+            let valorParcela = 0;
+            if (tipo === 'avulso') {
+                valorParcela = totalComJuros;
+                const prazo = parseInt(document.getElementById('emp-prazo-avulso').value) || 30;
+                document.getElementById('sim-desc-parcela').innerText = `Pagamento Único (${prazo} dias)`;
+                document.getElementById('sim-valor-parcela').innerText = formatMoney(valorParcela);
+                if(dataInicio) {
+                    const venc = addDays(new Date(dataInicio), prazo);
+                    descDatas = `Vencimento: ${venc.toLocaleDateString('pt-BR')}`;
+                }
+            } else {
+                valorParcela = totalComJuros / qtd;
+                document.getElementById('sim-desc-parcela').innerText = `${qtd}x Parcelas de`;
+                document.getElementById('sim-valor-parcela').innerText = formatMoney(valorParcela);
+                if(dataInicio) {
+                    const start = new Date(dataInicio);
+                    const end = addMonths(start, qtd);
+                    descDatas = `1ª parc: ${addMonths(start, 1).toLocaleDateString('pt-BR')} até ${end.toLocaleDateString('pt-BR')}`;
+                }
+            }
+            document.getElementById('sim-datas').innerText = descDatas;
+            checkLimitInfo(); 
+        }
+
+        function openLoanModal() {
+            const select = document.getElementById('emp-cliente');
+            select.innerHTML = '<option value="">Selecione um cliente...</option>';
+            if (state.clientes.length === 0) {
+                alert("Cadastre um cliente primeiro.");
+                router('clientes');
+                return;
+            }
+            state.clientes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.innerText = c.nome;
+                select.appendChild(opt);
+            });
+            document.getElementById('emp-data').valueAsDate = new Date();
+            document.getElementById('emp-valor').value = '';
+            document.getElementById('emp-tipo').value = 'avulso'; 
+            document.getElementById('emp-prazo-avulso').value = '30';
+            document.getElementById('btn-override').classList.add('hidden');
+            document.getElementById('div-override-input').classList.add('hidden');
+            document.getElementById('auth-gestor').value = '';
+            document.getElementById('btn-submit-emprestimo').disabled = false;
+            document.getElementById('modal-score-display').classList.add('hidden');
+            limitExceeded = false;
+            toggleParcelas(); 
+            document.getElementById('aviso-limite').classList.add('hidden');
+            document.getElementById('modal-emprestimo').showModal();
+        }
+
+        function checkLimitInfo() {
+            const clienteId = parseInt(document.getElementById('emp-cliente').value);
+            const avisoDiv = document.getElementById('aviso-limite');
+            const valSpan = document.getElementById('val-disponivel');
+            const btnOverride = document.getElementById('btn-override');
+            const btnSubmit = document.getElementById('btn-submit-emprestimo');
+            const scoreDisplay = document.getElementById('modal-score-display');
+            const gestorAuth = document.getElementById('auth-gestor').value.trim();
+            if (!clienteId) {
+                avisoDiv.classList.add('hidden');
+                scoreDisplay.classList.add('hidden');
+                return;
+            }
+            const score = calcularScore(clienteId);
+            scoreDisplay.innerHTML = `Score Atual do Cliente: <b>${score}</b>`;
+            scoreDisplay.classList.remove('hidden');
+            if (score < 400) scoreDisplay.className = "text-xs mt-1 text-red-600";
+            else if (score >= 800) scoreDisplay.className = "text-xs mt-1 text-emerald-600";
+            else scoreDisplay.className = "text-xs mt-1 text-blue-600";
+
+            const cliente = state.clientes.find(c => c.id === clienteId);
+            const emUso = getClientUsedCredit(clienteId);
+            const disponivel = cliente.limite - emUso;
+            const tipoLimite = cliente.tipoLimite || 'total';
+            const valorSimulado = parseFloat(document.getElementById('emp-valor').value) || 0;
+            const juros = parseFloat(document.getElementById('emp-juros').value) || 0;
+            
+            let debitoSimulado = 0;
+            if (tipoLimite === 'principal') {
+                debitoSimulado = valorSimulado; 
+            } else {
+                debitoSimulado = valorSimulado + (valorSimulado * (juros/100)); 
+            }
+
+            avisoDiv.classList.remove('hidden');
+            const textoTipo = tipoLimite === 'principal' ? '(Regra: S/ Juros)' : '(Regra: C/ Juros)';
+            if (debitoSimulado > disponivel) {
+                limitExceeded = true;
+                avisoDiv.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-200');
+                avisoDiv.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
+                valSpan.innerText = `${formatMoney(disponivel)} ${textoTipo} - INSUFICIENTE`;
+                btnOverride.classList.remove('hidden');
+                if (gestorAuth.length > 0) btnSubmit.disabled = false;
+                else btnSubmit.disabled = true;
+            } else {
+                limitExceeded = false;
+                avisoDiv.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-200');
+                avisoDiv.classList.remove('bg-red-50', 'text-red-700', 'border-red-200');
+                valSpan.innerText = `${formatMoney(disponivel)} ${textoTipo}`;
+                btnOverride.classList.add('hidden');
+                document.getElementById('div-override-input').classList.add('hidden');
+                document.getElementById('auth-gestor').value = ''; 
+                btnSubmit.disabled = false;
+            }
+        }
+
+        function showOverrideInput() {
+            document.getElementById('div-override-input').classList.remove('hidden');
+            document.getElementById('auth-gestor').focus();
+        }
+
+        function checkOverrideAuth() {
+            checkLimitInfo();
+        }
+
+        function handleNewLoan(e) {
+            e.preventDefault();
+            const clienteId = parseInt(document.getElementById('emp-cliente').value);
+            const valorOriginal = parseFloat(document.getElementById('emp-valor').value);
+            const taxaJuros = parseFloat(document.getElementById('emp-juros').value);
+            const tipo = document.getElementById('emp-tipo').value;
+            const qtdParcelas = tipo === 'parcelado' ? parseInt(document.getElementById('emp-qtd-parcelas').value) : 1;
+            const dataInicio = document.getElementById('emp-data').value;
+            const multaDiaria = parseFloat(document.getElementById('emp-multa-diaria').value);
+            const gestorAuth = document.getElementById('auth-gestor').value.trim();
+
+            const valorTotal = valorOriginal + (valorOriginal * (taxaJuros / 100));
+            const valorParcela = valorTotal / qtdParcelas;
+
+            if (limitExceeded && !gestorAuth) {
+                alert("Limite excedido. É necessária autorização do gestor.");
+                return;
+            }
+
+            let parcelas = [];
+            let dataBase = new Date(dataInicio);
+            dataBase.setHours(12,0,0,0);
+
+            for (let i = 1; i <= qtdParcelas; i++) {
+                let vencimento;
+                if (tipo === 'avulso') {
+                    const prazoAvulso = parseInt(document.getElementById('emp-prazo-avulso').value) || 30;
+                    vencimento = new Date(dataBase);
+                    vencimento.setDate(vencimento.getDate() + prazoAvulso); 
+                } else {
+                    vencimento = new Date(dataBase);
+                    vencimento.setMonth(vencimento.getMonth() + i); 
+                }
+
+                parcelas.push({
+                    numero: i,
+                    valorBase: valorParcela,
+                    vencimento: vencimento.toISOString().split('T')[0],
+                    status: 'pendente',
+                    dataPagamento: null,
+                    valorPago: 0,
+                    multaPaga: 0
+                });
+            }
+
+            const novoEmp = {
+                id: Date.now(),
+                clienteId,
+                valorOriginal,
+                taxaJuros,
+                valorTotal,
+                tipo,
+                dataInicio,
+                multaDiaria,
+                parcelas,
+                statusGeral: 'ativo',
+                liberadoPor: limitExceeded ? gestorAuth : null
+            };
+
+            state.emprestimos.push(novoEmp);
+            saveData();
+            document.getElementById('modal-emprestimo').close();
+            e.target.reset();
+            showToast('Empréstimo registrado com sucesso!');
+        }
+
+        // --- DASHBOARD ---
+        function renderDashboard(container) {
+            let totalEmprestado = 0;
+            let totalReceber = 0;
+            let inadimplentes = 0;
+            
+            state.emprestimos.forEach(emp => {
+                if(emp.statusGeral === 'ativo') {
+                    totalEmprestado += emp.valorOriginal;
+                    const pendente = emp.parcelas.filter(p => p.status === 'pendente')
+                                         .reduce((acc, p) => acc + p.valorBase, 0);
+                    totalReceber += pendente;
+                    const temInadimplencia = emp.parcelas.some(p => p.status === 'pendente' && getStatus(p.vencimento).code === 'inadimplente');
+                    if(temInadimplencia) inadimplentes++;
+                }
+            });
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 fade-in">
+                    <!-- Card 1 -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Valor na Rua (Principal)</p>
+                            <h3 class="text-2xl font-bold text-gray-800 mt-1">${formatMoney(totalEmprestado)}</h3>
+                        </div>
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                            <i data-lucide="trending-up" class="w-8 h-8"></i>
+                        </div>
+                    </div>
+                    <!-- Card 2 -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">A Receber (c/ Juros)</p>
+                            <h3 class="text-2xl font-bold text-emerald-600 mt-1">${formatMoney(totalReceber)}</h3>
+                        </div>
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                            <i data-lucide="piggy-bank" class="w-8 h-8"></i>
+                        </div>
+                    </div>
+                    <!-- Card 3 -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Contratos Inadimplentes</p>
+                            <h3 class="text-2xl font-bold ${inadimplentes > 0 ? 'text-red-600' : 'text-gray-800'} mt-1">${inadimplentes}</h3>
+                            <p class="text-xs text-red-400 mt-1">Atraso > 5 dias</p>
+                        </div>
+                        <div class="p-3 ${inadimplentes > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'} rounded-lg">
+                            <i data-lucide="alert-octagon" class="w-8 h-8"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <h3 class="font-bold text-gray-800 mb-4">Resumo Rápido (Ativos)</h3>
+                    ${renderActiveLoansList()}
+                </div>
+            `;
+        }
+
+        function renderActiveLoansList() {
+            const ativos = state.emprestimos.filter(e => e.statusGeral === 'ativo').slice(-5).reverse();
+            if(ativos.length === 0) return '<p class="text-gray-500 bg-white p-6 rounded-lg border border-gray-200">Nenhum empréstimo ativo no momento.</p>';
+            return ativos.map(emp => createLoanCard(emp)).join('');
+        }
+
+        function createLoanCard(emp) {
+            const cliente = state.clientes.find(c => c.id === emp.clienteId);
+            const parcelasPagas = emp.parcelas.filter(p => p.status === 'pago').length;
+            const totalParcelas = emp.parcelas.length;
+            const progresso = (parcelasPagas / totalParcelas) * 100;
+            
+            let statusBadge = `<span class="badge bg-green-100 text-green-700">Em dia</span>`;
+            const temAtraso = emp.parcelas.some(p => p.status === 'pendente' && getStatus(p.vencimento).code === 'atrasado');
+            const temInadimplencia = emp.parcelas.some(p => p.status === 'pendente' && getStatus(p.vencimento).code === 'inadimplente');
+
+            if(temInadimplencia) statusBadge = `<span class="badge bg-red-100 text-red-700">Inadimplente (>5d)</span>`;
+            else if(temAtraso) statusBadge = `<span class="badge bg-orange-100 text-orange-700">Atrasado</span>`;
+            
+            if(emp.statusGeral === 'finalizado') statusBadge = `<span class="badge bg-gray-200 text-gray-600">Finalizado</span>`;
+
+            const overrideBadge = emp.liberadoPor 
+                ? `<span class="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded border border-red-200 ml-2" title="Liberado por: ${emp.liberadoPor}">AUTORIZADO</span>` 
+                : '';
+
+            return `
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-3 flex flex-col md:flex-row justify-between items-center hover:shadow-md transition-shadow">
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                    <div class="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
+                        ${cliente ? cliente.nome.charAt(0) : '?'}
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-900 flex items-center">${cliente ? cliente.nome : 'Cliente removido'} ${overrideBadge}</p>
+                        <p class="text-sm text-gray-500">${emp.tipo === 'avulso' ? 'Empréstimo Avulso' : `Parcelado ${parcelasPagas}/${totalParcelas}`}</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-6 mt-4 md:mt-0 w-full md:w-auto justify-between">
+                    <div class="text-right">
+                        <p class="text-xs text-gray-400">Valor Total</p>
+                        <p class="font-bold text-emerald-600">${formatMoney(emp.valorTotal)}</p>
+                    </div>
+                        <div class="text-right">
+                        ${statusBadge}
+                    </div>
+                    <button onclick="openPaymentModal(${emp.id})" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700">
+                        Abrir
+                    </button>
+                </div>
+                ${emp.tipo === 'parcelado' ? `
+                <div class="w-full mt-3 md:hidden bg-gray-200 rounded-full h-1.5">
+                    <div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${progresso}%"></div>
+                </div>
+                ` : ''}
+            </div>
+            `;
+        }
+
+        // --- VIEW: EMPRÉSTIMOS FILTRADOS ---
+        function renderFilteredLoans(container, filterType) {
+            let filteredLoans = [];
+            let headerText = '';
+            let emptyText = '';
+            let btnClass = '';
+
+            if (filterType === 'em_aberto') {
+                headerText = 'Contratos em Aberto';
+                emptyText = 'Nenhum contrato em aberto.';
+                btnClass = 'text-blue-600';
+                filteredLoans = state.emprestimos.filter(e => e.statusGeral === 'ativo');
+            } else if (filterType === 'inadimplentes') {
+                headerText = 'Contratos Inadimplentes (> 5 Dias)';
+                emptyText = 'Nenhum inadimplente! Parabéns.';
+                btnClass = 'text-red-600';
+                filteredLoans = state.emprestimos.filter(e => {
+                    return e.statusGeral === 'ativo' && e.parcelas.some(p => p.status === 'pendente' && getStatus(p.vencimento).code === 'inadimplente');
+                });
+            } else if (filterType === 'finalizados') {
+                headerText = 'Histórico de Finalizados';
+                emptyText = 'Nenhum contrato finalizado ainda.';
+                btnClass = 'text-emerald-600';
+                filteredLoans = state.emprestimos.filter(e => e.statusGeral === 'finalizado');
+            }
+
+            filteredLoans.sort((a, b) => b.id - a.id);
+
+            container.innerHTML = `
+                <div class="space-y-6 fade-in">
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <h3 class="text-lg font-bold text-gray-700">${headerText} <span class="text-sm font-normal text-gray-400">(${filteredLoans.length})</span></h3>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <div class="relative w-full md:w-64">
+                                <i data-lucide="search" class="absolute left-3 top-2.5 h-5 w-5 text-gray-400"></i>
+                                <input type="text" onkeyup="filterTable('loans-table', 1, this.value)" placeholder="Buscar cliente..." class="pl-10 pr-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                            <button onclick="openLoanModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors whitespace-nowrap">
+                                <i data-lucide="plus-circle"></i> Novo
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm" id="loans-table">
+                                <thead class="bg-gray-50 text-gray-500 font-medium">
+                                    <tr>
+                                        <th class="px-6 py-4">ID</th>
+                                        <th class="px-6 py-4">Cliente</th>
+                                        <th class="px-6 py-4">Tipo</th>
+                                        <th class="px-6 py-4">Total</th>
+                                        <th class="px-6 py-4">Status</th>
+                                        <th class="px-6 py-4 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    ${filteredLoans.map(emp => {
+                                        const cliente = state.clientes.find(c => c.id === emp.clienteId);
+                                        const overrideIcon = emp.liberadoPor ? `<i data-lucide="shield-alert" class="w-3 h-3 text-red-500 inline ml-1" title="Liberado por ${emp.liberadoPor}"></i>` : '';
+                                        
+                                        let statusBadge = `<span class="badge bg-blue-100 text-blue-700">Regular</span>`;
+                                        if (emp.statusGeral === 'finalizado') {
+                                            statusBadge = `<span class="badge bg-gray-100 text-gray-600">Finalizado</span>`;
+                                        } else {
+                                            const temAtraso = emp.parcelas.some(p => p.status === 'pendente' && getStatus(p.vencimento).code === 'atrasado');
+                                            const temInadimplencia = emp.parcelas.some(p => p.status === 'pendente' && getStatus(p.vencimento).code === 'inadimplente');
+                                            if (temInadimplencia) statusBadge = `<span class="badge bg-red-100 text-red-700">Inadimplente</span>`;
+                                            else if (temAtraso) statusBadge = `<span class="badge bg-orange-100 text-orange-700">Atrasado</span>`;
+                                        }
+
+                                        return `
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 text-gray-400">#${emp.id.toString().slice(-4)}</td>
+                                            <td class="px-6 py-4 font-medium text-gray-900">${cliente ? cliente.nome : '???'} ${overrideIcon}</td>
+                                            <td class="px-6 py-4 capitalize">${emp.tipo}</td>
+                                            <td class="px-6 py-4 text-emerald-600 font-semibold">${formatMoney(emp.valorTotal)}</td>
+                                            <td class="px-6 py-4">${statusBadge}</td>
+                                            <td class="px-6 py-4 text-right">
+                                                <button onclick="openPaymentModal(${emp.id})" class="${btnClass} hover:opacity-80 font-medium text-xs border px-3 py-1 rounded">
+                                                    Abrir
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `}).join('')}
+                                </tbody>
+                            </table>
+                             ${filteredLoans.length === 0 ? `<div class="p-8 text-center text-gray-500">${emptyText}</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- GESTÃO DE PAGAMENTOS ---
+        function openPaymentModal(id) {
+            currentLoanId = id;
+            const emp = state.emprestimos.find(e => e.id === id);
+            const cliente = state.clientes.find(c => c.id === emp.clienteId);
+
+            document.getElementById('det-cliente').innerText = cliente ? cliente.nome : 'Cliente Deletado';
+            document.getElementById('det-tipo').innerText = `${emp.tipo.toUpperCase()} - Iniciado em ${formatDate(emp.dataInicio)}`;
+            
+            const divAuth = document.getElementById('det-auth-info');
+            if (emp.liberadoPor) {
+                divAuth.classList.remove('hidden');
+                document.getElementById('det-auth-nome').innerText = emp.liberadoPor;
+            } else {
+                divAuth.classList.add('hidden');
+            }
+
+            document.getElementById('det-principal').innerText = formatMoney(emp.valorOriginal);
+            document.getElementById('det-total').innerText = formatMoney(emp.valorTotal);
+
+            renderInstallmentList(emp);
+            const modal = document.getElementById('modal-pagamento');
+            if (!modal.open) {
+                modal.showModal();
+            }
+        }
+
+        function renderInstallmentList(emp) {
+            const tbody = document.getElementById('lista-parcelas');
+            tbody.innerHTML = '';
+            let totalRestante = 0;
+            let totalMultaPrevista = 0;
+            let todasPagas = true;
+            emp.parcelas.forEach(p => {
+                if (p.status === 'pendente') {
+                    todasPagas = false;
+                    totalRestante += p.valorBase;
+                    const status = getStatus(p.vencimento);
+                    const multa = calcularMulta(p.valorBase, status.diasAtraso || 0, emp.multaDiaria) || 0;
+                    if(multa > 0) totalMultaPrevista += multa;
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-slate-50';
+                    row.innerHTML = `
+                        <td class="px-4 py-3 font-medium text-gray-500">${p.numero}</td>
+                        <td class="px-4 py-3">${formatDate(p.vencimento)}</td>
+                        <td class="px-4 py-3 font-semibold text-gray-700">${formatMoney(p.valorBase)}</td>
+                        <td class="px-4 py-3 text-red-500 text-xs">
+                            ${multa > 0 ? `+ ${formatMoney(multa)}<br>(${status.diasAtraso-5}d atraso)` : '-'}
+                        </td>
+                        <td class="px-4 py-3"><span class="badge ${status.color}">${status.label}</span></td>
+                        <td class="px-4 py-3 text-right">
+                            <button type="button" onclick="pagarParcela(${p.numero}, ${p.valorBase}, ${multa})" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded hover:bg-emerald-700 shadow-sm">
+                                Receber ${formatMoney(p.valorBase + multa)}
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                } else {
+                    const row = document.createElement('tr');
+                    row.className = 'bg-gray-50 text-gray-400';
+                    row.innerHTML = `
+                        <td class="px-4 py-3">${p.numero}</td>
+                        <td class="px-4 py-3 line-through">${formatDate(p.vencimento)}</td>
+                        <td class="px-4 py-3 line-through">${formatMoney(p.valorBase)}</td>
+                        <td class="px-4 py-3 text-xs">Pago + ${formatMoney(p.multaPaga)}</td>
+                        <td class="px-4 py-3"><span class="badge bg-green-100 text-green-700">Pago em ${formatDate(p.dataPagamento)}</span></td>
+                        <td class="px-4 py-3 text-right text-xs"><i data-lucide="check" class="inline w-4 h-4"></i></td>
+                    `;
+                    tbody.appendChild(row);
+                }
+            });
+            document.getElementById('det-restante').innerText = formatMoney(totalRestante);
+            document.getElementById('det-multa').innerText = formatMoney(totalMultaPrevista);
+            const btnQuitar = document.getElementById('btn-quitar');
+            if (todasPagas) {
+                btnQuitar.classList.add('hidden');
+                if(emp.statusGeral !== 'finalizado') {
+                    emp.statusGeral = 'finalizado';
+                    saveData();
+                }
+            } else {
+                btnQuitar.classList.remove('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        function pagarParcela(numeroParcela, valorBase, multaCalculada) {
+            const total = valorBase + multaCalculada;
+            if(confirm(`Confirmar recebimento da parcela #${numeroParcela}?\nValor: ${formatMoney(valorBase)}\nMulta: ${formatMoney(multaCalculada)}\nTotal: ${formatMoney(total)}`)) {
+                const emp = state.emprestimos.find(e => e.id === currentLoanId);
+                const parcela = emp.parcelas.find(p => p.numero === numeroParcela);
+                
+                parcela.status = 'pago';
+                parcela.dataPagamento = new Date().toISOString().split('T')[0];
+                parcela.valorPago = total;
+                parcela.multaPaga = multaCalculada;
+
+                // --- REGISTRA TRANSAÇÃO ---
+                registrarTransacao(currentLoanId, total, 'Pagamento Parcela', `Parcela #${numeroParcela} com multa: ${formatMoney(multaCalculada)}`);
+                // --------------------------
+
+                const pendentes = emp.parcelas.filter(p => p.status === 'pendente');
+                if(pendentes.length === 0) emp.statusGeral = 'finalizado';
+
+                saveData();
+                showToast(`Recebimento registrado!`);
+                openPaymentModal(currentLoanId);
+                const activeNav = document.querySelector('.nav-item.bg-emerald-600');
+                if(activeNav) router(activeNav.id.replace('nav-', ''));
+            }
+        }
+
+        function quitarTudo() {
+            const emp = state.emprestimos.find(e => e.id === currentLoanId);
+            const pendentes = emp.parcelas.filter(p => p.status === 'pendente');
+            if(pendentes.length === 0) return;
+
+            let totalPagar = 0;
+            let resumo = "";
+            pendentes.forEach(p => {
+                const status = getStatus(p.vencimento);
+                const multa = calcularMulta(p.valorBase, status.diasAtraso || 0, emp.multaDiaria);
+                totalPagar += (p.valorBase + multa);
+                resumo += `Parc #${p.numero}: ${formatMoney(p.valorBase + multa)}\n`;
+            });
+
+            if(confirm(`Deseja quitar TODAS as parcelas restantes?\n\n${resumo}\nTOTAL: ${formatMoney(totalPagar)}`)) {
+                pendentes.forEach(p => {
+                     const status = getStatus(p.vencimento);
+                     const multa = calcularMulta(p.valorBase, status.diasAtraso || 0, emp.multaDiaria);
+                     p.status = 'pago';
+                     p.dataPagamento = new Date().toISOString().split('T')[0];
+                     p.valorPago = p.valorBase + multa;
+                     p.multaPaga = multa;
+                });
+                
+                // --- REGISTRA TRANSAÇÃO ---
+                registrarTransacao(currentLoanId, totalPagar, 'Quitação Total', `Quitação de ${pendentes.length} parcelas restantes`);
+                // --------------------------
+                
+                emp.statusGeral = 'finalizado';
+                saveData();
+                showToast("Empréstimo quitado com sucesso!");
+                openPaymentModal(currentLoanId);
+            }
+        }
+
+        // --- CLIENTES ---
+        function renderClientes(container) {
+            container.innerHTML = `
+                <div class="space-y-6 fade-in">
+                    <div class="flex justify-between items-center">
+                        <div class="relative max-w-xs w-full">
+                            <i data-lucide="search" class="absolute left-3 top-2.5 h-5 w-5 text-gray-400"></i>
+                            <input type="text" onkeyup="filterTable('clientes-table', 2, this.value)" placeholder="Buscar cliente..." class="pl-10 pr-4 py-2 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+                        <button onclick="openModal('modal-cliente')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-colors">
+                            <i data-lucide="plus"></i> Novo Cliente
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm" id="clientes-table">
+                                <thead class="bg-gray-50 text-gray-500 font-medium">
+                                    <tr>
+                                        <th class="px-6 py-4">Score</th>
+                                        <th class="px-6 py-4">Status</th>
+                                        <th class="px-6 py-4">Nome & CPF</th>
+                                        <th class="px-6 py-4">Limite / Disponível</th>
+                                        <th class="px-6 py-4">Contato</th>
+                                        <th class="px-6 py-4 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    ${state.clientes.map(c => {
+                                        const emUso = getClientUsedCredit(c.id);
+                                        const disponivel = (c.limite || 0) - emUso;
+                                        const pctUso = c.limite > 0 ? (emUso / c.limite) * 100 : 0;
+                                        const labelRegra = (c.tipoLimite === 'principal') ? 'S/ Juros' : 'C/ Juros';
+                                        const score = calcularScore(c.id);
+                                        return `
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 text-center">
+                                                ${getScoreBadge(score, c.id)}
+                                                ${c.scoreManual ? '<span class="text-[9px] text-gray-400 block mt-1">Manual: '+c.scoreGestor+'</span>' : ''}
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <span class="badge ${c.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                                    ${c.status ? c.status.toUpperCase() : 'ATIVO'}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <p class="font-medium text-gray-900">${c.nome}</p>
+                                                <p class="text-xs text-gray-400">${c.cpf || 'Sem CPF'}</p>
+                                                ${c.diaVencimento ? `<p class="text-[10px] text-blue-500 mt-1">Venc. Pref: Dia ${c.diaVencimento}</p>` : ''}
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <div class="w-full max-w-[140px]">
+                                                    <div class="flex justify-between text-xs mb-1">
+                                                        <span class="text-emerald-600 font-bold">${formatMoney(disponivel)}</span>
+                                                        <span class="text-gray-400">de ${formatMoney(c.limite || 0)}</span>
+                                                    </div>
+                                                    <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                                        <div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${Math.min(pctUso, 100)}%"></div>
+                                                    </div>
+                                                    <p class="text-[10px] text-gray-400 mt-1">${labelRegra}</p>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <p class="text-sm">${c.telefone}</p>
+                                                <p class="text-xs text-gray-400">${c.email || ''}</p>
+                                            </td>
+                                            <td class="px-6 py-4 text-right">
+                                                <button onclick="deleteCliente(${c.id})" class="text-gray-400 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                            </td>
+                                        </tr>
+                                    `}).join('')}
+                                </tbody>
+                            </table>
+                             ${state.clientes.length === 0 ? '<div class="p-8 text-center text-gray-500">Nenhum cliente cadastrado.</div>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // --- NOVA VIEW: EXTRATOS ---
+        function renderExtratos(container) {
+            const historico = state.transacoes.slice().reverse(); // Mais recentes primeiro
+
+            container.innerHTML = `
+                 <div class="space-y-6 fade-in">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-gray-700">Histórico de Transações</h3>
+                        <div class="bg-white px-4 py-2 rounded-lg border shadow-sm">
+                            <span class="text-xs text-gray-400 uppercase font-bold">Total Recebido</span>
+                            <p class="text-xl font-bold text-emerald-600">${formatMoney(historico.reduce((acc, t) => acc + t.valor, 0))}</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-gray-500 font-medium">
+                                <tr>
+                                    <th class="px-6 py-4">Data/Hora</th>
+                                    <th class="px-6 py-4">Cliente</th>
+                                    <th class="px-6 py-4">Detalhe</th>
+                                    <th class="px-6 py-4">Valor</th>
+                                    <th class="px-6 py-4">Auth Code</th>
+                                    <th class="px-6 py-4 text-right">Comprovante</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                ${historico.map(t => `
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 text-gray-500">
+                                            ${new Date(t.data).toLocaleDateString()} <br>
+                                            <span class="text-xs">${new Date(t.data).toLocaleTimeString()}</span>
+                                        </td>
+                                        <td class="px-6 py-4 font-medium text-gray-900">${t.clienteNome}</td>
+                                        <td class="px-6 py-4">
+                                            <span class="block text-gray-700 font-medium">${t.tipo}</span>
+                                            <span class="text-xs text-gray-400">${t.detalhe}</span>
+                                        </td>
+                                        <td class="px-6 py-4 text-emerald-600 font-bold">${formatMoney(t.valor)}</td>
+                                        <td class="px-6 py-4 text-xs font-mono text-gray-400 select-all">${t.id}</td>
+                                        <td class="px-6 py-4 text-right">
+                                            <button onclick="baixarComprovante('${t.id}')" class="text-purple-600 hover:text-purple-800 flex items-center justify-end gap-1 w-full">
+                                                <i data-lucide="file-check" class="w-4 h-4"></i> PDF
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        ${historico.length === 0 ? '<div class="p-8 text-center text-gray-500">Nenhuma transação registrada.</div>' : ''}
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        // --- GERAÇÃO DE PDF (Estilo Bancário) ---
+        function gerarComprovantePDF(transacao) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Configurações visuais
+            doc.setFont("helvetica");
+            
+            // Cabeçalho
+            doc.setFillColor(16, 185, 129); // Emerald 500
+            doc.rect(0, 0, 210, 20, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(16);
+            doc.text("CrediGestor", 10, 13);
+            doc.setFontSize(10);
+            doc.text("Comprovante de Transação", 190, 13, { align: "right" });
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.text("Comprovante de Pagamento", 105, 40, { align: "center" });
+
+            // Linha Separadora
+            doc.setLineWidth(0.5);
+            doc.line(20, 45, 190, 45);
+
+            // Dados
+            let y = 60;
+            const lineHeight = 10;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text("BENEFICIÁRIO", 20, y);
+            doc.setTextColor(0);
+            doc.text("CrediGestor Financeira", 190, y, { align: "right" });
+            y += lineHeight;
+
+            doc.setTextColor(100);
+            doc.text("PAGADOR", 20, y);
+            doc.setTextColor(0);
+            doc.text(transacao.clienteNome, 190, y, { align: "right" });
+            y += lineHeight;
+
+            doc.setTextColor(100);
+            doc.text("DATA DO PAGAMENTO", 20, y);
+            doc.setTextColor(0);
+            doc.text(new Date(transacao.data).toLocaleString('pt-BR'), 190, y, { align: "right" });
+            y += lineHeight;
+
+            doc.setTextColor(100);
+            doc.text("TIPO DE OPERAÇÃO", 20, y);
+            doc.setTextColor(0);
+            doc.text(transacao.tipo, 190, y, { align: "right" });
+            y += lineHeight;
+
+            doc.setTextColor(100);
+            doc.text("DESCRIÇÃO", 20, y);
+            doc.setTextColor(0);
+            doc.text(transacao.detalhe, 190, y, { align: "right" });
+            y += lineHeight + 5;
+
+            // Valor Destacado
+            doc.setFillColor(243, 244, 246); // Gray 100
+            doc.rect(20, y - 5, 170, 15, 'F');
+            doc.setFontSize(12);
+            doc.text("VALOR TOTAL", 25, y + 5);
+            doc.setFontSize(14);
+            doc.setTextColor(16, 185, 129); // Emerald
+            doc.text(formatMoney(transacao.valor), 185, y + 5, { align: "right" });
+            
+            y += 30;
+
+            // Autenticação
+            doc.setFontSize(9);
+            doc.setTextColor(150);
+            doc.text("Autenticação Mecânica:", 105, y, { align: "center" });
+            doc.setFont("courier");
+            doc.setTextColor(0);
+            doc.text(transacao.id, 105, y + 5, { align: "center" });
+            
+            doc.setDrawColor(200);
+            doc.line(20, y + 15, 190, y + 15);
+            
+            doc.setFont("helvetica");
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text("Este documento serve como recibo provisório dos serviços prestados.", 105, 280, { align: "center" });
+
+            return doc;
+        }
+
+        function baixarComprovante(id) {
+            const transacao = state.transacoes.find(t => t.id === id);
+            if (!transacao) return;
+            const doc = gerarComprovantePDF(transacao);
+            doc.save(`Comprovante_${transacao.clienteNome.split(' ')[0]}_${transacao.id.slice(0,6)}.pdf`);
+        }
+
+        // --- FECHAMENTO DO DIA (ZIP) ---
+        function baixarFechamentoDia() {
+            const hoje = new Date().toISOString().split('T')[0];
+            const transacoesHoje = state.transacoes.filter(t => t.data.startsWith(hoje));
+
+            if (transacoesHoje.length === 0) {
+                alert("Nenhuma transação registrada hoje para gerar fechamento.");
+                return;
+            }
+
+            const zip = new JSZip();
+            const pasta = zip.folder(`Fechamento_${hoje}`);
+            let totalDia = 0;
+
+            transacoesHoje.forEach(t => {
+                totalDia += t.valor;
+                const doc = gerarComprovantePDF(t);
+                const pdfBlob = doc.output('blob');
+                // Nome do arquivo: NOME_VALOR_HORA.pdf
+                const hora = new Date(t.data).getHours() + 'h' + new Date(t.data).getMinutes();
+                const nomeArquivo = `${t.clienteNome.replace(/\s+/g, '_')}_${t.valor.toFixed(2)}_${hora}.pdf`;
+                pasta.file(nomeArquivo, pdfBlob);
+            });
+
+            // Arquivo de Resumo TXT
+            const resumo = `FECHAMENTO DE CAIXA - ${hoje}\n` +
+                           `--------------------------------\n` +
+                           `Total de Transações: ${transacoesHoje.length}\n` +
+                           `Volume Total: ${formatMoney(totalDia)}\n` +
+                           `Gerado em: ${new Date().toLocaleString()}\n`;
+            pasta.file("Resumo_do_Dia.txt", resumo);
+
+            // Gerar e Baixar
+            zip.generateAsync({ type: "blob" })
+                .then(function(content) {
+                    saveAs(content, `Fechamento_Caixa_${hoje}.zip`);
+                    showToast("Fechamento (ZIP) baixado com sucesso!");
+                });
+        }
+
+        function handleNewCustomer(e) {
+            e.preventDefault();
+            const nome = document.getElementById('cliente-nome').value;
+            const cpf = document.getElementById('cliente-cpf').value;
+            const tel = document.getElementById('cliente-tel').value;
+            const email = document.getElementById('cliente-email').value;
+            const limite = parseFloat(document.getElementById('cliente-limite').value) || 0;
+            const tipoLimite = document.getElementById('cliente-tipo-limite').value;
+            const diaVenc = document.getElementById('cliente-dia-venc').value;
+            const obs = document.getElementById('cliente-obs').value;
+
+            state.clientes.push({ 
+                id: Date.now(), 
+                nome, 
+                cpf,
+                telefone: tel, 
+                email, 
+                limite,
+                tipoLimite,
+                diaVencimento: diaVenc,
+                obs,
+                status: 'ativo',
+                dataCadastro: new Date().toISOString().split('T')[0],
+                scoreManual: null,
+                scoreGestor: null
+            });
+            saveData();
+            closeModal('modal-cliente');
+            e.target.reset();
+            showToast('Cliente cadastrado com sucesso!');
+        }
+
+        function deleteCliente(id) {
+            if(state.emprestimos.some(e => e.clienteId === id && e.statusGeral === 'ativo')) {
+                alert("Não pode excluir cliente com dívidas ativas.");
+                return;
+            }
+            if(confirm("Excluir cliente?")) {
+                state.clientes = state.clientes.filter(c => c.id !== id);
+                saveData();
+                showToast("Cliente removido.");
+            }
+        }
+
+        function closeModal(id) { document.getElementById(id).close(); }
+        function openModal(id) { document.getElementById(id).showModal(); }
+        
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const [ano, mes, dia] = dateString.split('-');
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+
+        function filterTable(tableId, colIndex, text) {
+            const filter = text.toLowerCase();
+            const rows = document.getElementById(tableId).getElementsByTagName('tr');
+            for (let i = 1; i < rows.length; i++) {
+                let td = rows[i].getElementsByTagName('td')[colIndex];
+                if (td) {
+                    rows[i].style.display = (td.textContent || td.innerText).toLowerCase().indexOf(filter) > -1 ? "" : "none";
+                }
+            }
+        }
+    </script>
+</body>
+</html>
